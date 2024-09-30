@@ -1,0 +1,20 @@
+{
+  "sql_host": "localhost",
+  "sql_database": "lighthouse",
+  "sql_user": "lighthouse",
+  "sql_pass": "lighthouse",
+  "cube_api": "ENTER API KEY",
+  "files": "C:/lighthouse/EXPORT",
+  "assets": "C:/lighthouse/assets",
+  "sharepoint": "https://contoso.sharepoint.com/sites/InformationTechnology-CubeExport/Shared%20Documents/",
+  "sharepoint_assets": "https://contoso.sharepoint.com/sites/InformationTechnology-CubeExport/Shared%20Documents/assets/",
+  "wkhtmltopdf": "C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe",
+  "api_urls": {
+    "processes": "https://api.cubedms.com/rpm/api2.svc/Procs",
+    "groups": "https://api.cubedms.com/rpm/api2.svc/Procs",
+    "forms": "https://api.cubedms.com/rpm/api2.svc/ProcFormList",
+    "data": "https://api.cubedms.com/rpm/api2.svc/ProcForm",
+    "files": "https://api.cubedms.com/rpm/api2.svc/ProcFormFile"
+  },
+  "api_max": 35000
+}

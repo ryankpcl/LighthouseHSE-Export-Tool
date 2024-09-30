@@ -1,0 +1,186 @@
+* {
+ -moz-box-sizing: border-box;
+ -webkit-box-sizing: border-box;
+ box-sizing: border-box;
+}
+
+.logo {
+ display: block;
+ margin-left: 500px;
+}
+
+.report-content {
+font-family: open_sansregular, arial, serif;
+padding:0px;
+page-break-after:avoid;
+font-size: 8pt;
+display: block;
+}
+
+.page-break {
+page-break-after:always;
+height:0;
+margin:0;
+background:transparent;
+}
+
+.FieldTable--container,
+.report-content table {
+page-break-inside:avoid;
+}
+
+h1 {
+ font-size: 16px;
+ text-align: left;
+ color: #000;
+ border-bottom: #000 1px solid;
+}
+
+.EmployeeTrainingProfile {
+ font-size: 16px;
+ text-align: center;
+ color: #000;
+ border-bottom: transparent;
+}
+
+h2 {
+ font-size: 14px;
+ text-align: left;
+ font-style: italic;
+ color: #000;
+ border-bottom: #000 1px solid;
+}
+
+h3 {
+ font-size: 12px;
+ text-align: left;
+ font-style: italic;
+ color: #000;
+ font-weight:800;
+ border-bottom: #000 1px solid;
+}
+
+table {
+ width: 100%;
+ border: 1px solid #cecece;
+}
+
+tr:nth-child(2n+1) td{
+background: #fff;
+}
+
+table td {
+ color:rgba(0,0,0,0.7);
+}
+
+table th {
+ color:#000;
+ font-weight:normal;
+ background: #d6d6d6;
+}
+
+.field-name {
+ width: 40%;
+ text-align: left;
+ padding: .5rem;
+ font-weight:bold;
+ font-style:italic;
+ font-size: 8pt;
+}
+
+.field-value {
+ text-align: left;
+ padding: .5rem;
+ font-size: 8pt;
+}
+
+table.sideways td.field-name {
+ vertical-align:top;
+ width:25%;
+ text-align:left;
+ font-weight:bold;
+ font-style:italic;
+ font-size:8pt;
+}
+
+table.sideways td.field-value {
+ vertical-align:top;
+ width:25%;
+ text-align:left;
+ background:transparent;
+ font-size:8pt;
+}
+
+
+@page {
+ margin-top: 12mm;
+ margin-bottom: 12mm;
+}
+
+
+.table-container > div { page-break-inside:avoid; }
+table { page-break-after:auto }
+tr { page-break-inside:avoid; page-break-after:auto }
+td { page-break-inside:avoid; page-break-after:auto }
+thead { display:table-header-group }
+tfoot { display:table-footer-group }
+#terms { page-break-before: always; }
+.table-container td * { page-break-inside:avoid;} /* Make everything inside the cells 'inline' to prevent lines being half cut off */
+.table-container td .FieldPlaceholder--dropPicker {display:block;} /* Return colored pickers to be block so they don't render outside the cell */
+
+.TableBuilder--container {
+background:transparent;
+font-size:8pt;
+}
+
+.FieldPlaceholder--dropPicker {
+min-width:50px !important;
+}
+
+.FieldPlaceholder--dropPicker:before {
+ top:-0.05rem!important; /* Better align drop picker color wiht smaller font size */
+ left:-1.6rem!important;
+}
+
+.TableBuilder--table-row .TableBuilder--table-cell {
+padding:5px;
+}
+
+.TableBuilder--table-cell.FieldPlaceholder--container .FieldPlaceholder--value.is-display {
+padding:0px !important;
+}
+
+.TableBuilder--table-cell.FieldPlaceholder--container .FieldPlaceholder--value.is-display.FieldPlaceholder--dropPicker {
+padding:1px!important;
+box-sizing:border-box;
+text-align:center;
+}
+
+.TableBuilder--table-cell.FieldPlaceholder--container .FieldPlaceholder--value.is-display.FieldPlaceholder--dropPicker {
+text-align:left;
+}
+
+.TableBuilder--table-cell {
+line-height: 1rem;
+}
+
+.FieldPlaceholder {
+border:none!important; /* Remove spacing on top of drop picker inside tables */
+}
+
+.TableBuilder--table-cell.FieldPlaceholder--container .FieldPlaceholder--value.value.FieldPlaceholder--formulaField {
+padding:15px!important;
+}
+
+.FormFulfillment--details-primary-container {
+padding-left: 5px;
+}
+
+.TableBuilder--table.is-non-defined-rows .TableBuilder--table-cell:first-child,
+.TableBuilder--table.is-non-defined-rows .TableBuilder--table-header:first-child{
+ display:none;
+}
+
+.associatedactionitems .TableBuilder--table {
+table-layout:auto;
+}

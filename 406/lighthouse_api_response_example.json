@@ -1,0 +1,281 @@
+{
+    "Result": {
+        "Process": "1. Flash Report",
+        "ProcessID": 406,
+        "Form": {
+            "Number": "0150",
+            "Title": "9/15/2024 8:20:00 AM CAMCIG24",
+            "FormID": 342054,
+            "Owner": "Employee Owner",
+            "Status": "Completed",
+            "StatusID": 1173,
+            "StatusDate": "2024-09-15 09:17:39",
+            "Archived": false,
+            "ApprovalResult": "Pending",
+            "Started": "2024-09-15 09:17:39",
+            "StartedBy": "Employee Owner",
+            "Modified": "2024-09-15 09:17:40",
+            "ModifiedBy": "Employee Owner",
+            "Fields": [
+                {
+                    "Field": "Reference to Incident",
+                    "Uid": "522_3403",
+                    "Format": 7,
+                    "ID": 0,
+                    "Value": ""
+                },
+                {
+                    "Field": "AUTONAME_SEP_LINE_7581",
+                    "Uid": "500_7581",
+                    "Format": 13,
+                    "Value": "AUTONAME_SEP_LINE_6641"
+                },
+                {
+                    "Field": "Date Reported",
+                    "Uid": "500_7582",
+                    "Format": 25,
+                    "Value": "2024-09-15 08:20:00"
+                },
+                {
+                    "Field": "Client",
+                    "Uid": "522_2495",
+                    "Format": 7,
+                    "ID": 308118,
+                    "Value": "Contoso"
+                },
+                {
+                    "Field": "Project",
+                    "Uid": "522_2486",
+                    "Format": 7,
+                    "ID": 308120,
+                    "Value": "Contoso24"
+                },
+                {
+                    "Field": "Specific Location of Incident",
+                    "Uid": "500_7583",
+                    "Format": 7,
+                    "Value": "West pad"
+                },
+                {
+                    "Field": "Reported By",
+                    "Uid": "522_2615",
+                    "Format": 7,
+                    "ID": 775,
+                    "Value": "Employee Worker"
+                },
+                {
+                    "Field": "Supervisor",
+                    "Uid": "522_2488",
+                    "Format": 7,
+                    "ID": 542,
+                    "Value": "Employee Supervisor"
+                },
+                {
+                    "Field": "AUTONAME_LABEL_7584",
+                    "Uid": "500_7584",
+                    "Format": 32,
+                    "Value": "Incident Information"
+                },
+                {
+                    "Field": "Incident Type",
+                    "Uid": "500_7585",
+                    "Format": 7,
+                    "Value": "Equipment Incident"
+                },
+                {
+                    "Field": "Description of Incident",
+                    "Uid": "500_7586",
+                    "Format": 7,
+                    "Value": "Contoso equipment collided with Fabrikam pickup truck."
+                },
+                {
+                    "Field": "AUTONAME_SEP_LINE_7587",
+                    "Uid": "500_7587",
+                    "Format": 13,
+                    "Value": "AUTONAME_SEP_LINE_6775"
+                },
+                {
+                    "Field": "Parties Involved",
+                    "Uid": "500_7588",
+                    "Format": 7,
+                    "Value": "Employee(s)"
+                },
+                {
+                    "Field": "Employee(s) Involved",
+                    "Uid": "500_7589",
+                    "Rows": [
+                        {
+                            "RowID": 4964,
+                            "TemplateDefinedRowID": 0,
+                            "IsDefinition": true,
+                            "IsLabelRow": false,
+                            "IsShown": true,
+                            "Order": 0,
+                            "Fields": [
+                                {
+                                    "Values": [],
+                                    "Uid": "522_2613",
+                                    "IsUnread": false,
+                                    "UserCanViewReferenced": false
+                                }
+                            ]
+                        },
+                        {
+                            "RowID": 727275,
+                            "TemplateDefinedRowID": 0,
+                            "IsDefinition": false,
+                            "IsLabelRow": false,
+                            "IsShown": true,
+                            "Order": 1,
+                            "Fields": [
+                                {
+                                    "Values": [
+                                        {
+                                            "ID": 323666,
+                                            "ValueUid": "",
+                                            "Order": -1,
+                                            "Value": "Employee Worker"
+                                        }
+                                    ],
+                                    "Uid": "522_2613",
+                                    "IsUnread": true,
+                                    "UserCanViewReferenced": false
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Field": "Subcontractor(s) Involved",
+                    "Uid": "500_7590",
+                    "Rows": [
+                        {
+                            "RowID": 4965,
+                            "TemplateDefinedRowID": 0,
+                            "IsDefinition": true,
+                            "IsLabelRow": false,
+                            "IsShown": true,
+                            "Order": 0,
+                            "Fields": [
+                                {
+                                    "Values": [],
+                                    "Uid": "500_7791",
+                                    "IsUnread": false
+                                },
+                                {
+                                    "Values": [],
+                                    "Uid": "500_7591",
+                                    "IsUnread": false
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Field": "Member(s) of Public Involved",
+                    "Uid": "500_7592",
+                    "Rows": [
+                        {
+                            "RowID": 4966,
+                            "TemplateDefinedRowID": 0,
+                            "IsDefinition": true,
+                            "IsLabelRow": false,
+                            "IsShown": true,
+                            "Order": 0,
+                            "Fields": [
+                                {
+                                    "Values": [],
+                                    "Uid": "500_7593",
+                                    "IsUnread": false
+                                },
+                                {
+                                    "Values": [],
+                                    "Uid": "500_7594",
+                                    "IsUnread": false
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Field": "Assets Involved",
+                    "Uid": "500_7595",
+                    "Rows": [
+                        {
+                            "RowID": 4967,
+                            "TemplateDefinedRowID": 0,
+                            "IsDefinition": true,
+                            "IsLabelRow": false,
+                            "IsShown": true,
+                            "Order": 0,
+                            "Fields": [
+                                {
+                                    "Values": [],
+                                    "Uid": "522_2492",
+                                    "IsUnread": false,
+                                    "UserCanViewReferenced": false
+                                },
+                                {
+                                    "Values": [],
+                                    "Uid": "513_1167",
+                                    "SharedField": {
+                                        "FieldType": 500,
+                                        "SubType": 1
+                                    },
+                                    "IsUnread": false
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Field": "Report is Complete - HSE Manager to Review",
+                    "Uid": "500_7889",
+                    "Format": 4,
+                    "Value": "1"
+                },
+                {
+                    "Field": "Business Unit",
+                    "Uid": "522_2493",
+                    "Format": 7,
+                    "ID": 0,
+                    "Value": ""
+                },
+                {
+                    "Field": "Division",
+                    "Uid": "522_2494",
+                    "Format": 7,
+                    "ID": 0,
+                    "Value": ""
+                },
+                {
+                    "Field": "WCB - Manitoba",
+                    "Uid": "500_7608",
+                    "Format": 7,
+                    "Value": "https://www.wcb.mb.ca/hurt-at-work-how-to-report-an-injury"
+                }
+            ],
+            "Sets": [],
+            "Participants": [
+                {
+                    "Name": "Employee Project Manager",
+                    "Role": "Reporting Role",
+                    "ParticipantID": 1088739,
+                    "UserID": 45
+                },
+                {
+                    "Name": "Employee CEO",
+                    "Role": "Management Role",
+                    "Read": "2024-09-15",
+                    "ParticipantID": 1088740,
+                    "UserID": 46
+                },
+            ],
+            "Actions": [],
+            "Notes": [],
+            "NotesForStaff": [],
+            "Files": [],
+            "Signatures": []
+        }
+    }
+}

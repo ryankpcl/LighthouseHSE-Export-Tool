@@ -1,0 +1,113 @@
+{
+	"columns": {
+		"Number": {
+			"path": "Result.Form.Number"
+		},
+		"Incident Reference": {
+			"path": "Result.Form.Fields",
+			"field": "Reference to Incident"
+		},
+		"Status": {
+			"path": "Result.Form.Status"
+		},
+		"Owner": {
+			"path": "Result.Form.Owner"
+		},
+		"Date Reported": {
+			"path": "Result.Form.Fields",
+			"field": "Date/Time Reported"
+		},
+		"Client": {
+			"path": "Result.Form.Fields",
+			"field": "Client Name"
+		},
+		"Project": {
+			"path": "Result.Form.Fields",
+			"field": "Project"
+		},
+		"Specific Location": {
+			"path": "Result.Form.Fields",
+			"field": "Specific Location of Incident"
+		},
+		"Reported By": {
+			"path": "Result.Form.Fields",
+			"field": "Reported By"
+		},
+		"Supervisor": {
+			"path": "Result.Form.Fields",
+			"field": "Supervisor"
+		},
+		"Incident Type": {
+			"path": "Result.Form.Fields",
+			"field": "Incident Type"
+		},
+		"Description": {
+			"path": "Result.Form.Fields",
+			"field": "Description of Incident"
+		},
+		"Parties Involved": {
+			"path": "Result.Form.Fields",
+			"field": "Parties Involved"
+		},
+		"Employees Involved": {
+			"path": "Result.Form.Fields",
+			"field": "Employee(s) Involved",
+			"subfield": "Rows",
+			"extract": {
+				"employee_name": {
+					"path": "Fields",
+					"field": "522_2613"
+				}
+			}
+		},
+		"Subcontractors Involved": {
+			"path": "Result.Form.Fields",
+			"field": "Subcontractors(s) Involved",
+			"subfield": "Rows",
+			"extract": {
+				"subcontractor_company": {
+					"path": "Fields",
+					"field": "500_7791"
+				},
+				"subcontractor_name": {
+					"path": "Fields",
+					"field": "500_7591"
+				}
+			}
+		},
+		"Public Involved": {
+			"path": "Result.Form.Fields",
+			"field": "Member(s) of Public Involved",
+			"subfield": "Rows",
+			"extract": {
+				"public_name": {
+					"path": "Fields",
+					"field": "500_7593"
+				},
+				"public_contact": {
+					"path": "Fields",
+					"field": "500_7594"
+				}
+			}
+		},
+		"Assets Involved": {
+			"path": "Result.Form.Fields",
+			"field": "Assets Involved",
+			"subfield": "Rows",
+			"extract": {
+				"asset_number": {
+					"path": "Fields",
+					"field": "522_2492"
+				},
+				"asset_description": {
+					"path": "Fields",
+					"field": "513_1167"
+				}
+			}
+		},
+		"Report Complete": {
+			"path": "Result.Form.Fields",
+			"field": "Report is Complete - HSE Manager to Review"
+		}
+	}
+}

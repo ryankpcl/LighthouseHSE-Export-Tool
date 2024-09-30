@@ -1,0 +1,25 @@
+{
+	"columns": {
+		"Number": {
+			"path": "Result.Form.Number"
+		},
+		"Status": {
+			"path": "Result.Form.Status"
+		},
+		"Date Reported": {
+			"path": "Result.Form.Fields",
+			"field": "Date/Time Reported"
+		},
+		"Client": {
+			"path": "Result.Form.Fields",
+			"field": "Client Name"
+		},
+		"Project": {
+			"path": "Result.Form.Fields",
+			"field": "Project"
+		},
+		"Owner": {
+			"path": "Result.Form.Owner"
+		}
+	}
+}
