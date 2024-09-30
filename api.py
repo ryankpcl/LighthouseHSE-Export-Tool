@@ -1,5 +1,4 @@
 import config
-import json
 import requests
 import sys
 
@@ -68,8 +67,9 @@ def fetch_file_url(file_id):
         "ReturnDownloadUrl": True
     }
     response = requests.post(settings['api_urls']['files'], headers=headers(), json=payload)
+    click()
     return response.json()["Result"]["DownloadUrl"]
-    
+
 def endpoints():
     global settings
     
