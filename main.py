@@ -11,6 +11,7 @@ import logging
 import os
 from pathlib import Path
 import pdfkit
+import re
 import requests
 import sys
 from time import sleep
@@ -225,12 +226,20 @@ def path_to_file_url(path):
 
 # Function to download file and save locally
 def download_file(url, dest_folder, file_name):
+    # Remove invalid characters from file_name
+    valid_file_name = re.sub(r'[<>:"/\\|?*]', '', file_name)
+    
     response = requests.get(url)
     if response.status_code == 200:
-        file_path = os.path.join(dest_folder, file_name)
-        with open(file_path, 'wb') as file:
-            file.write(response.content)
-        return file_path
+        try:
+            file_path = os.path.join(dest_folder, valid_file_name)
+            with open(file_path, 'wb') as file:
+                file.write(response.content)
+            return file_path
+        except Exception as e:
+            print()
+            print(f"    WARNING: Unable to open file: {file_path}")
+            print()
     else:
         raise Exception(f"Failed to download file: {url}")
 
@@ -354,7 +363,7 @@ def main(args):
             # Add Table of Contents entry to Report file
             if os.path.exists(os.path.join(input_dir, "toc.json")):
                 toc_df = excel.dataframe(data, form_number, os.path.join(input_dir, "toc.json"))
-                excel.append(os.path.join(output_dir, 'Process.xlsx'), toc_df, "Table of Contents")
+                excel.append(os.path.join(output_dir, 'Process.xlsx'), toc_df, str(sheet) + " TOC")
 
             # Add form data to Report file, create new sheets for each year.
             if os.path.exists(os.path.join(input_dir, "report.json")):
