@@ -5,7 +5,7 @@ import database
 from datetime import datetime
 import excel
 import glob
-from jinja2 import Template, Environment, FileSystemLoader
+from jinja2 import Template
 import json
 import logging
 import os
@@ -19,9 +19,6 @@ from urllib.parse import urljoin
 
 # Load settings file
 settings = config.load()
-
-# Jinja2 environment settings
-env = Environment(loader=FileSystemLoader('templates'))
 
 # Configure PDF writer
 path_wkhtmltopdf = settings['wkhtmltopdf']
@@ -189,13 +186,8 @@ def extract_value(field, field_def):
     value = None
     if 'Value' in field:
         value = field['Value']
-        # Check if the value is a JSON string
-        try:
-            value_json = json.loads(value)
-            value = value_json
-        except (json.JSONDecodeError, TypeError):
-            pass  # Value is not a JSON string, keep it as is
     elif 'Values' in field and field['Values']:
+        # Extract all values and join them if necessary
         values = [v.get('Value', '') for v in field['Values']]
         value = ', '.join(values)
     else:
