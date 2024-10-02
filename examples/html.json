@@ -3,104 +3,22 @@
 		"title": {
 			"path": "Result.Form.Title"
 		},
-		"date_reported": {
+		"date": {
 			"path": "Result.Form.Fields",
-			"field": "Date Reported"
-		},
-		"client": {
-			"path": "Result.Form.Fields",
-			"field": "Client"
-		},
+			"field": "Date"
+		},	
 		"project": {
 			"path": "Result.Form.Fields",
-			"field": "Project"
+			"field": "Job/Project"
 		},
-		"location": {
+		"name": {
 			"path": "Result.Form.Fields",
-			"field": "Specific Location of Incident"
+			"field": "Name"
 		},
-		"reported_by": {
+		"orientation_values": {
 			"path": "Result.Form.Fields",
-			"field": "Reported By"
-		},
-		"supervisor": {
-			"path": "Result.Form.Fields",
-			"field": "Supervisor"
-		},
-		"incident_type": {
-			"path": "Result.Form.Fields",
-			"field": "Incident Type"
-		},
-		"incident_description": {
-			"path": "Result.Form.Fields",
-			"field": "Description of Incident"
-		},		
-		"parties_involved": {
-			"path": "Result.Form.Fields",
-			"field": "Parties Involved"
-		},		
-		"employees_involved": {
-			"path": "Result.Form.Fields",
-			"field": "Employee(s) Involved",
-			"subfield": "Rows",
-			"extract": {
-				"employee_name": {
-					"path": "Fields",
-					"field": "522_2613",
-					"match_on": "Uid"
-				}
-			}
-		},		
-		"subcontractors_involved": {
-			"path": "Result.Form.Fields",
-			"field": "Subcontractor(s) Involved",
-			"subfield": "Rows",
-			"extract": {
-				"subcontractor_company": {
-					"path": "Fields",
-					"field": "500_7791",
-					"match_on": "Uid"
-				},
-				"subcontractor_name": {
-					"path": "Fields",
-					"field": "500_7591",
-					"match_on": "Uid"
-				}
-			}
-		},	
-		"public_involved": {
-			"path": "Result.Form.Fields",
-			"field": "Member(s) of Public Involved",
-			"subfield": "Rows",
-			"extract": {
-				"public_name": {
-					"path": "Fields",
-					"field": "500_7593",
-					"match_on": "Uid"
-				},
-				"public_contact": {
-					"path": "Fields",
-					"field": "500_7594",
-					"match_on": "Uid"
-				}
-			}
-		},
-		"assets_involved": {
-			"path": "Result.Form.Fields",
-			"field": "Assets Involved",
-			"subfield": "Rows",
-			"extract": {
-				"asset_number": {
-					"path": "Fields",
-					"field": "522_2492",
-					"match_on": "Uid"
-				},
-				"asset_description": {
-					"path": "Fields",
-					"field": "513_1167",
-					"match_on": "Uid"
-				}
-			}
+			"field": "Subcontractor Site Safety Orientation",
+			"parse_json": true
 		}
 	}
 }

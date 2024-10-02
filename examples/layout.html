@@ -1,165 +1,81 @@
 <html>
 <head>
-<title>({{ title }})</title>
-<link rel="stylesheet" href="{{ css_url }}" />
+    <title>({{ title }})</title>
+    <link rel="stylesheet" href="{{ css_url }}" />
 </head>
 <body>
-<div class="report-content">
-	<div class="table-container">
-		<table class="sideways" style="border: 0px solid transparent">
-			<colgroup>
-				<col width="25%">
-				<col width="75%">
-			</colgroup>
-			<tbody style="border: 0px solid transparent">
-				<tr style="border: 0px solid transparent">
-					<td class="field-value" style="border: 0px solid transparent">
-						<img src="{{ logo_url }}" width="200">
-					</td>
-					<td class="field-name" style="border: 0px solid transparent">
-						<h1>Flash Report ({{ title }})</h1>
-					</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
+	<div class="report-content">
+		
+		<div class="top-logo">
+			<img src="{{ logo_url }}" width="700" alt="Logo">
+		</div>
 
-	<div class="table-container">
-		<h1></h1>
-		<table class="sideways">
-			<colgroup>
-				<col width="25%"><col width="25%"><col width="25%"><col width="25%">
-			</colgroup>
-			<tbody>
-				<tr>
-					<td class="field-name">Date Reported</td>
-					<td class="field-value">{{ date_reported }}</td>
-					<td class="field-name">Client</td>
-					<td class="field-value">{{ client }}</td>
-				</tr>
-				<tr>
-					<td class="field-name">Project</td>
-					<td class="field-value">{{ project }}</td>
-					<td class="field-name">Specific Location of Incident</td>
-					<td class="field-value">{{ location }}</td>
-				</tr>
-				<tr>
-					<td class="field-name">Reported By</td>
-					<td class="field-value">{{ reported_by }}</td>
-					<td class="field-name">Supervisor</td>
-					<td class="field-value">{{ supervisor }}</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
+		<div class="table-container">
+			<div>
+				<table class="sideways">
+					<tbody>
+						<tr>
+							<td class="field-name">Date</td>
+							<td class="field-value">{{ date }}</td>
+							<td class="field-name">Job/Project</td>
+							<td class="field-value">{{ project }}</td>
+						</tr>
+						<tr>
+							<td class="field-name">Subcontractor</td>
+							<td class="field-value">{{ name }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		
+		<br>
+		
+		<!-- OptionID to Description Mapping -->
+		{% set optionid_to_description = {
+			"10761": "Overview of Scope of Work",
+			"10762": "Location of First Aid Kits",
+			"10763": "Location of Fire Extinguishers",
+			"10764": "Location of washrooms",
+			"10765": "Site PPE requirements",
+			"10766": "FLRA Requirements",
+			"10767": "Drug and Alcohol Requirements",
+			"10768": "Right to Refuse",
+			"10769": "Location of Safety Board",
+			"10770": "Location of Camp (if required)",
+			"10771": "Location of Muster Point",
+			"10772": "ERP",
+			"10773": "Introduction to Supervisors",
+			"10774": "Site Specific Rules",
+			"10775": "Location of Radio and Sign In/Out",
+			"10776": "Location of Daily Meetings",
+			"10777": "Harassment Policy Posted",
+			"10778": "Reporting Incident Process",
+			"10779": "Working in Area of Blind Spots",
+			"10780": "Other"
+		} %}
 
-	<div class="table-container">
-		<h1>Incident Information</h1>
-		<table class="sideways">
-			<colgroup>
-				<col width="25%"><col width="25%"><col width="25%"><col width="25%">
-			</colgroup>
-			<tbody>
-				<tr>
-					<td class="field-name">Incident Type</td>
-					<td class="field-value" colspan="3">{{ incident_type }}</td>
-				</tr>    
-				<tr>    
-					<td class="field-name">Description of Incident</td>
-					<td class="field-value" colspan="3">{{ incident_description }}</td>
-				</tr>
-				<tr>
-					<td class="field-name">Parties Involved</td>
-					<td class="field-value" colspan="3">{{ parties_involved }}</td>
-				</tr>
-				<tr>
-					<td class="field-name">Employees Involved</td>
-					<td class="field-value" colspan="3">
-						{% for x in employees_involved %}
-							{{ x.employee_name }}<br>
-						{% endfor %}
-					</td>
-				</tr>
-				{% if subcontractors_involved %}
-				<tr>
-					<td class="field-name">Subcontractors Involved</td>
-					<td class="field-value" colspan="3">
-						<table border="1">
-							<thead>
-								<tr>
-									<th>Company Name</th>
-									<th>Name of Subcontractor Employee</th>
-								</tr>
-							</thead>
-							<tbody>
-								{% for x in subcontractors_involved %}
-									<tr>
-										<td>{{ x.subcontractor_company }}</td>
-										<td>{{ x.subcontractor_name }}</td>
-									</tr>
-								{% endfor %}
-							</tbody>
-						</table>
-					</td>
-				</tr>
-				{% endif %}
-				{% if public_involved %}
-					<tr>
-						<td class="field-name">Public Involved</td>
-						<td class="field-value" colspan="3">
-							<table border="1">
-								<thead>
-									<tr>
-										<th>Name(s)</th>
-										<th>Contact Info</th>
-									</tr>
-								</thead>
-								<tbody>
-									{% for x in public_involved %}
-										<tr>
-											<td>{{ x.public_name }}</td>
-											<td>{{ x.public_contact }}</td>
-										</tr>
-									{% endfor %}
-								</tbody>
-							</table>
-						</td>
-					</tr>
-				{% endif %}
-			</tbody>
-		</table>
-	</div>
-	
-	<h2>Assets Involved</h2>
-	<div class="table-container">
-		{% if assets_involved %}
+		<!-- Display the Table -->
 		<table border="1">
-			<thead>
+			<tr>
+				<th>Subcontractor Site Safety Orientation</th>
+				<th>Reviewed</th>
+				<th>Comments</th>
+			</tr>
+			{% for item in orientation_values.Values %}
+				{% set option_name = optionid_to_description.get(item.OptionID|string, 'Unknown Option') %}
+				{% if item.Value == 2 %}
+					{% set value_text = 'Yes' %}
+				{% else %}
+					{% set value_text = 'No' %}
+				{% endif %}
 				<tr>
-					<th>Equipment #</th>
-					<th>Description</th>
+					<td>{{ option_name }}</td>
+					<td>{{ value_text }}</td>
+					<td>{{ item.Comment }}</td>
 				</tr>
-			</thead>
-			<tbody>
-				{% for x in assets_involved %}
-				<tr>
-					<td>{{ x.asset_number }}</td>
-					<td>{{ x.asset_description }}</td>
-				</tr>
-				{% endfor %}
-			</tbody>
+			{% endfor %}
 		</table>
-		{% else %}
-		<p>No assets involved.</p>
-		{% endif %}
 	</div>
-
-	<h2>Files</h2>
-	<div class="table-container">
-		{% if files_html %}
-			{{ files_html|safe }}
-		{% endif %}
-	</div>
-</div>
 </body>
 </html>

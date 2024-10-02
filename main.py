@@ -5,7 +5,7 @@ import database
 from datetime import datetime
 import excel
 import glob
-from jinja2 import Template
+from jinja2 import Template, Environment
 import json
 import logging
 import os
@@ -20,6 +20,14 @@ from urllib.parse import urljoin
 # Load settings file
 settings = config.load()
 
+# Configure Jinja2
+def from_json(value):
+    return json.loads(value)
+    
+env = Environment()
+env.filters['from_json'] = from_json
+
+
 # Configure PDF writer
 path_wkhtmltopdf = settings['wkhtmltopdf']
 pdfkit_config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
@@ -27,6 +35,9 @@ pdfkit_config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 # List to store skipped processes
 skipped_processes = []
 
+# List to store skipped downloads
+skipped_downloads = []
+    
 # Function to handle groups data
 def sync_groups(cursor, url, cnx):
     global settings
@@ -193,6 +204,14 @@ def extract_value(field, field_def):
     else:
         value = None
 
+    # Parse JSON if needed
+    if field_def.get('parse_json') and value:
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError as e:
+            logging.warning(f"Could not parse JSON value: {e}")
+            value = None
+
     # Convert to appropriate type if specified
     if value is not None and 'type' in field_def:
         value = convert_type(value, field_def['type'])
@@ -241,7 +260,7 @@ def download_file(url, dest_folder, file_name):
             print(f"    WARNING: Unable to open file: {file_path}")
             print()
     else:
-        raise Exception(f"Failed to download file: {url}")
+        return 0
 
 def main(args):
     global settings
@@ -359,6 +378,10 @@ def main(args):
                 for file in data["Result"]["Form"]["Files"]:
                     file_url = api.fetch_file_url(file["FileID"])
                     local_file_path = download_file(file_url, form_dir, file["FileName"])
+                    
+                    # Check if URL was successful, create warning notice if not.
+                    if local_file_path == 0:
+                        skipped_downloads.append(form_id)
 
             # Add Table of Contents entry to Report file
             if os.path.exists(os.path.join(input_dir, "toc.json")):
@@ -397,7 +420,7 @@ def main(args):
                 logo_url = path_to_file_url(logo_path)
 
                 # Set up Jinja2 template
-                template = Template(html_template)
+                template = env.from_string(html_template)
 
                 # Configure file links
                 files_html_relative = ""
@@ -480,7 +503,14 @@ def main(args):
     
     # Print skipped processes
     if skipped_processes:
-        print(f"Skipped the following processes due to lack of permission: {skipped_processes}")
+        print(f"Skipped the following processes due to lack of permission:")
+        for x in skipped_processes:
+            print(f"Process ID: {x}")
+        
+    # Print skipped downloads
+    if skipped_downloads:
+       for x in skipped_downloads:
+           print(f"FormID: {x}")
 
     # Close database connection
     print("Closing database connection...")
