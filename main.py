@@ -17,30 +17,39 @@ import sys
 from time import sleep
 from urllib.parse import urljoin
 
+# Import threading modules
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+from tqdm import tqdm  # For progress bar (install via pip if not available)
+
 # Load settings file
 settings = config.load()
 
 # Configure Jinja2
 def from_json(value):
     return json.loads(value)
-    
+
 env = Environment()
 env.filters['from_json'] = from_json
-
 
 # Configure PDF writer
 path_wkhtmltopdf = settings['wkhtmltopdf']
 pdfkit_config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
-# List to store skipped processes
+# Lists to store skipped items
 skipped_processes = []
-
-# List to store skipped downloads
 skipped_downloads = []
-
-# List to store skipped forms
 skipped_forms = []
-    
+
+# Threading lock for shared resources
+lock = threading.Lock()
+
+# Thread-local storage for database connections
+thread_local = threading.local()
+
+# Event to signal when API limit is reached
+api_limit_reached = threading.Event()
+
 # Function to handle groups data
 def sync_groups(cursor, url, cnx):
     global settings
@@ -241,16 +250,14 @@ def extract_data(data, html_json):
     for field_name, field_def in html_json['fields_to_extract'].items():
         extracted[field_name] = extract_field(data, field_def)
     return extracted
-    
-# Convert local path to file URL
+ 
 def path_to_file_url(path):
     return Path(path).as_uri()
 
-# Function to download file and save locally
 def download_file(url, dest_folder, file_name):
     # Remove invalid characters from file_name
     valid_file_name = re.sub(r'[<>:"/\\|?*]', '', file_name)
-    
+
     response = requests.get(url)
     if response.status_code == 200:
         try:
@@ -265,15 +272,203 @@ def download_file(url, dest_folder, file_name):
     else:
         return 0
 
+def process_single_form(form_id, input_dir, output_dir, x, process_name, max_form, args):
+    global skipped_forms, skipped_downloads
+    try:
+        # Check if API limit has been reached
+        if api_limit_reached.is_set():
+            return False  # Stop processing
+
+        # Get or create the thread's database connection and cursor
+        if not hasattr(thread_local, 'cnx'):
+            thread_local.cnx = database.setup()
+            thread_local.cursor = thread_local.cnx.cursor()
+        cnx = thread_local.cnx
+        cursor = thread_local.cursor
+
+        # Get the form data from Cube
+        data = api.fetch_form(form_id)
+
+        # Error handling
+        error_message = data.get("Result", {}).get("Error", {}).get("Message")
+        if error_message:
+            if error_message == "API daily limit reached":
+                with lock:
+                    print(f"\n        ERROR: {error_message}. FormID: {form_id}")
+                    api_limit_reached.set()  # Set the event to signal other threads
+                return False  # Stop processing this form
+            else:
+                with lock:
+                    print(f"\n        WARNING: {error_message}. FormID: {form_id}")
+                    skipped_forms.append(form_id)
+                return False  # Skip this form but continue processing others
+        else:
+            # Proceed with processing
+            started_datetime = datetime.strptime(
+                data["Result"]["Form"]["Started"], "%Y-%m-%d %H:%M:%S"
+            )
+            year = started_datetime.year
+            month = started_datetime.month
+
+            # Determine sheet name
+            if max_form > 5000:
+                sheet = f"{year}-{month}"
+            else:
+                sheet = str(year)
+
+            form_number = data["Result"]["Form"]["Number"].replace('/', '').replace('"', '').strip()
+
+            # Save JSON response
+            form_dir = os.path.join(output_dir, form_number)
+            os.makedirs(form_dir, exist_ok=True)
+            json_filename = os.path.normpath(os.path.join(form_dir, f"{form_number}.json"))
+            with open(json_filename, 'w') as json_file:
+                json.dump(data, json_file, indent=4)
+
+            # Save attachments
+            if "Files" in data["Result"]["Form"]:
+                for file in data["Result"]["Form"]["Files"]:
+                    file_url = api.fetch_file_url(file["FileID"])
+                    local_file_path = download_file(file_url, form_dir, file["FileName"])
+
+                    # Check if download was successful
+                    if local_file_path == 0:
+                        with lock:
+                            skipped_downloads.append(form_id)
+
+            # Add Table of Contents entry to Report file
+            if os.path.exists(os.path.join(input_dir, "toc.json")):
+                toc_df = excel.dataframe(data, form_number, os.path.join(input_dir, "toc.json"))
+                with lock:
+                    excel.append(os.path.join(output_dir, 'Process.xlsx'), toc_df, f"{sheet} TOC")
+
+            # Add form data to Report file
+            if os.path.exists(os.path.join(input_dir, "report.json")):
+                report_df = excel.dataframe(data, form_number, os.path.join(input_dir, "report.json"))
+                with lock:
+                    excel.append(os.path.join(output_dir, 'Process.xlsx'), report_df, sheet)
+
+            # HTML report
+            if os.path.exists(os.path.join(input_dir, "html.json")):
+                # Load HTML definitions file
+                with open(os.path.join(input_dir, "html.json"), 'r') as config_file:
+                    html_config = json.load(config_file)
+
+                # Extract data
+                extracted_data = extract_data(data, html_config)
+
+                # Load HTML template file
+                html_template_path = os.path.join(input_dir, 'layout.html')
+                with open(html_template_path, 'r') as html_file:
+                    html_template = html_file.read()
+
+                # Render the HTML
+                css_content = ''
+                with open(os.path.join(settings['assets'], 'stylesheet.css'), 'r') as css_file:
+                    css_content = css_file.read()
+
+                logo_path = os.path.abspath(os.path.join(settings['assets'], 'logo.png'))
+                logo_url = path_to_file_url(logo_path)
+
+                # Set up Jinja2 template
+                template = env.from_string(html_template)
+
+                # Configure file links
+                files_html_relative = ""
+                files_html_full = ""
+                if "Files" in data["Result"]["Form"]:
+                    for file in data["Result"]["Form"]["Files"]:
+                        # Local file path
+                        local_file_path = os.path.join(form_dir, file["FileName"])
+                        file_url = path_to_file_url(local_file_path)
+
+                        if file["FileName"].lower().endswith('.pdf'):
+                            files_html_relative += (
+                                f'<p><a href="{file_url}" target="_blank">{file["FileName"]}</a></p>'
+                            )
+                        else:
+                            files_html_relative += (
+                                f'<p><img src="{file_url}" alt="{file["FileName"]}" '
+                                f'style="max-width: 200px;"></p>'
+                            )
+
+                        # SharePoint path (if not --nocloud)
+                        if not args.nocloud:
+                            full_url_path = urljoin(
+                                settings['sharepoint'],
+                                f'{process_name}/{x[1]}/{form_number}/{file["FileName"]}'
+                            )
+
+                            if file["FileName"].lower().endswith('.pdf'):
+                                files_html_full += (
+                                    f'<p><a href="{full_url_path}" target="_blank">'
+                                    f'{file["FileName"]}</a></p>'
+                                )
+                            else:
+                                files_html_full += (
+                                    f'<p><img src="{full_url_path}" alt="{file["FileName"]}" '
+                                    f'style="max-width: 200px;"></p>'
+                                )
+
+                # Render HTML with relative paths
+                html_content_relative = template.render(
+                    css_content=css_content,
+                    logo_url=logo_url,
+                    files_html=files_html_relative,
+                    **extracted_data
+                )
+
+                # Define file paths
+                html_filename = os.path.join(form_dir, f"report_{form_number}.html")
+                pdf_filename = os.path.join(form_dir, f"report_{form_number}.pdf")
+
+                # Write HTML to a file
+                with open(html_filename, "w") as html_file:
+                    html_file.write(html_content_relative)
+
+                # Convert HTML to PDF
+                options = {'enable-local-file-access': True}
+                pdfkit.from_file(
+                    html_filename, pdf_filename, configuration=pdfkit_config, options=options
+                )
+
+                # Re-render HTML for SharePoint (if not --nocloud)
+                if not args.nocloud:
+                    # Render HTML with full URL paths
+                    html_content_full = template.render(
+                        css_url=urljoin(settings['sharepoint_assets'], 'stylesheet.css'),
+                        logo_url=urljoin(settings['sharepoint_assets'], 'logo.png'),
+                        files_html=files_html_full,
+                        **extracted_data
+                    )
+
+                    # Write the HTML with full URL paths to a file
+                    with open(html_filename, "w") as html_file:
+                        html_file.write(html_content_full)
+
+            # Mark the form as completed in the database
+            with lock:
+                database.form_complete(cursor, form_id, cnx)
+                cnx.commit()
+
+        return True  # Indicate success
+
+    except Exception as e:
+        with lock:
+            print(f"\n        ERROR processing form {form_id}: {e}")
+            skipped_forms.append(form_id)
+        return False  # Indicate failure
+
 def main(args):
     global settings
     global pdfkit_config
-    
-    print ("#############################")
-    print ("#  Cube Export Tool v1.0    #")
-    print ("#  Created by: Ryan Louden  #")
-    print ("#############################")
-    print ("")
+    global skipped_processes, skipped_downloads, skipped_forms
+
+    print("#############################")
+    print("#  Cube Export Tool v1.0    #")
+    print("#  Created by: Ryan Louden  #")
+    print("#############################")
+    print("")
 
     # Set up database connection
     try:
@@ -288,12 +483,12 @@ def main(args):
 
     print("Synchronizing Cube indexes...")
     sleep(1)
-    
+
     # Only run sync operations if --nosync is not used
     if not args.nosync:
         sync_groups(cursor, settings['api_urls']['groups'], cnx)
         sync_processes(cursor, settings['api_urls']['processes'], cnx)
-        
+
         if args.sync:
             sync_forms(cursor, settings['api_urls']['forms'], cnx, args.sync)
         else:
@@ -303,33 +498,37 @@ def main(args):
 
     print("")
     print("Getting list of processes to export...")
-    
+
     # Get the list of processes
     processes = database.process_list(cursor)
     print(f"Found {len(processes)} processes.")
-    
-    print ("")
 
-    print ("Definition files detected for the following Processes...")
+    print("")
+
+    print("Definition files detected for the following Processes...")
     for x in processes:
         if os.path.exists(os.path.join(os.getcwd(), str(x[0]))):
             print(f"    {x[1]} ({x[0]})")
 
-    print ("")
+    print("")
     sleep(5)
 
     print("Exporting forms...")
-    
+
     # Execute each process export script
     y = 1
     z = len(processes)
     for x in processes:
-        input_dir = os.path.join(os.getcwd(), str(x[0]))  # Path to JSON definition files for the process 
+        input_dir = os.path.join(os.getcwd(), str(x[0]))  # Path to JSON definition files
         process_name = database.group_name(cursor, x[2])
-        
+
         # Create output directory
         try:
-            output_dir = os.path.join(settings['files'], process_name, x[1].replace('/', '').replace('"', '').strip())
+            output_dir = os.path.join(
+                settings['files'],
+                process_name,
+                x[1].replace('/', '').replace('"', '').strip()
+            )
             os.makedirs(output_dir, exist_ok=True)
         except OSError as e:
             print(f"Error creating directory for form export: {e}")
@@ -337,7 +536,8 @@ def main(args):
 
         if os.path.exists(input_dir) and not glob.glob(os.path.join(output_dir, '*.xlsx')):
             # Clear completed status for the process
-            database.process_reset(cursor, x[0], cnx)  # Pass cnx for commit
+            database.process_reset(cursor, x[0], cnx)
+            cnx.commit()
             print("    Definitions have been added to process, resetting form statuses")
 
         # Get list of relevant forms for this process including export status
@@ -345,185 +545,86 @@ def main(args):
 
         # Count number of forms
         max_form = len(form_ids)
-        cur_form = 1
+        if max_form == 0:
+            continue  # Skip if no forms to process
 
-        # Update screen to show process is starting to run
-        sys.stdout.write(f"\r    ({y} of {z}) {x[1]}")
-        sys.stdout.flush()
-        
-        # Process each form
-        for form_id in form_ids:
-            # Get the form data from Cube
-            data = api.fetch_form(form_id)
+        # Initialize progress bar
+        progress_bar = tqdm(total=max_form, desc=f"    ({y} of {z}) {x[1]}")
 
-            # Error handling - Check if there are error message, otherwise continue.           
-            if data.get("Result", {}).get("Error", {}).get("Message"):
-                print()
-                print(f"        WARNING: {data['Result']['Error']['Message']}. FormID: {form_id}")
-                
-                skipped_forms.append(form_id)
-            else:     
-                # Get the 'Started' year and month from the form
-                year = datetime.strptime(data["Result"]["Form"]["Started"], "%Y-%m-%d %H:%M:%S").year
-                month = datetime.strptime(data["Result"]["Form"]["Started"], "%Y-%m-%d %H:%M:%S").month
-                
-                # If more than 5000 forms in this process, create individual sheets for each month in the year.
-                # Otherwise, just create sheets for each year.
-                if max_form > 5000:
-                    sheet = str(year) + "-" + str(month)
-                else:
-                    sheet = str(year)
-               
-                form_number = data["Result"]["Form"]["Number"].replace('/', '').replace('"', '').strip()
+        try:
+            # Process forms using ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=6) as executor:
+                futures = {
+                    executor.submit(
+                        process_single_form,
+                        form_id,
+                        input_dir,
+                        output_dir,
+                        x,
+                        process_name,
+                        max_form,
+                        args
+                    ): form_id for form_id in form_ids
+                }
 
-                # Save JSON response
-                form_dir = os.path.join(output_dir, form_number)
-                os.makedirs(form_dir, exist_ok=True)
-                json_filename = os.path.normpath(os.path.join(form_dir, f"{form_number}.json"))
-                with open(json_filename, 'w') as json_file:
-                    json.dump(data, json_file, indent=4)
+                for future in as_completed(futures):
+                    form_id = futures[future]
+                    try:
+                        result = future.result()
+                        # Update progress bar if form processed successfully
+                        if result:
+                            progress_bar.update(1)
+                        # Check if API limit has been reached
+                        if api_limit_reached.is_set():
+                            print("\nAPI daily limit reached. Stopping further processing.")
+                            break  # Exit the processing loop
+                    except Exception as exc:
+                        print(f'\n        Form {form_id} generated an exception: {exc}')
+                        with lock:
+                            skipped_forms.append(form_id)
 
-                # Save attachments
-                if "Files" in data["Result"]["Form"]:
-                    for file in data["Result"]["Form"]["Files"]:
-                        file_url = api.fetch_file_url(file["FileID"])
-                        local_file_path = download_file(file_url, form_dir, file["FileName"])
-                        
-                        # Check if URL was successful, create warning notice if not.
-                        if local_file_path == 0:
-                            skipped_downloads.append(form_id)
+                # After breaking the loop, cancel any pending futures
+                if api_limit_reached.is_set():
+                    print("API limit reached.  Shutting down.")
+                    for future in futures:
+                        if not future.done():
+                            future.cancel()
 
-                # Add Table of Contents entry to Report file
-                if os.path.exists(os.path.join(input_dir, "toc.json")):
-                    toc_df = excel.dataframe(data, form_number, os.path.join(input_dir, "toc.json"))
-                    excel.append(os.path.join(output_dir, 'Process.xlsx'), toc_df, str(sheet) + " TOC")
+                    # Shutdown the executor immediately
+                    executor.shutdown(wait=False)
+                    break  # Exit the outer process loop if desired
 
-                # Add form data to Report file, create new sheets for each year.
-                if os.path.exists(os.path.join(input_dir, "report.json")):
-                    report_df = excel.dataframe(data, form_number, os.path.join(input_dir, "report.json"))
-                    excel.append(os.path.join(output_dir, 'Process.xlsx'), report_df, str(sheet))
+        except KeyboardInterrupt:
+            print("\nKeyboardInterrupt received, shutting down...")
+            executor.shutdown(wait=False)
+            sys.exit(1)
 
-                # HTML report                     
-                if os.path.exists(os.path.join(input_dir, "html.json")):
-                    # Load the HTML definitions file
-                    with open(os.path.join(input_dir, "html.json"), 'r') as config_file:
-                        html_config = json.load(config_file)
-                    
-                    # Extract HTML definitions file
-                    extracted_data = extract_data(data, html_config)
-                        
-                    # Load the HTML template file
-                    html_template_path = os.path.join(input_dir, 'layout.html')
-                    with open(html_template_path, 'r') as html_file:
-                        html_template = html_file.read()
-                    
-                    # Render the HTML with relative paths
-                    css_url_relative = path_to_file_url(os.path.join(settings['assets'], 'stylesheet.css'))
-                    logo_url_relative = path_to_file_url(os.path.join(settings['assets'], 'logo.png'))
+        # Close progress bar
+        progress_bar.close()
 
-                    # Embed CSS content
-                    with open(os.path.join(settings['assets'], 'stylesheet.css'), 'r') as css_file:
-                        css_content = css_file.read()
-
-                    # Get the absolute path to the logo image
-                    logo_path = os.path.abspath(os.path.join(settings['assets'], 'logo.png'))
-                    logo_url = path_to_file_url(logo_path)
-
-                    # Set up Jinja2 template
-                    template = env.from_string(html_template)
-
-                    # Configure file links
-                    files_html_relative = ""
-                    files_html_full = ""
-                    if "Files" in data["Result"]["Form"]:
-                        for file in data["Result"]["Form"]["Files"]:
-                            # Construct the local file path
-                            local_file_path = os.path.join(form_dir, file["FileName"])
-                            file_url = path_to_file_url(local_file_path)
-     
-                            if file["FileName"].lower().endswith('.pdf'):
-                                files_html_relative += f'<p><a href="{file_url}" target="_blank">{file["FileName"]}</a></p>'
-                            else:
-                                files_html_relative += f'<p><img src="{file_url}" alt="{file["FileName"]}" style="max-width: 200px;"></p>'
-                            
-                            # Construct the SharePoint path (if --nocloud IS NOT called)
-                            if not args.nocloud:                            
-                                full_url_path = urljoin(settings['sharepoint'], f'{process_name}/{x[1]}/{form_number}/{file["FileName"]}')
-                                
-                                if file["FileName"].lower().endswith('.pdf'):
-                                    files_html_full += f'<p><a href="{full_url_path}" target="_blank">{file["FileName"]}</a></p>'
-                                else:
-                                    files_html_full += f'<p><img src="{full_url_path}" alt="{file["FileName"]}" style="max-width: 200px;"></p>'
-
-                    # Render the HTML with relative paths
-                    html_content_relative = template.render(
-                        css_content=css_content,
-                        logo_url=logo_url,
-                        files_html=files_html_relative,
-                        **extracted_data  # Unpack the extracted_data dictionary
-                    )
-
-                    # Define file paths
-                    html_filename = os.path.join(form_dir, f"report_{form_number}.html")
-                    pdf_filename = os.path.join(form_dir, f"report_{form_number}.pdf")   
-
-                    # Write the HTML to a file
-                    with open(html_filename, "w") as html_file:
-                        html_file.write(html_content_relative)
-                    
-                    # Convert HTML to PDF
-                    options = {
-                        'enable-local-file-access': True
-                    }
-                    pdfkit.from_file(html_filename, pdf_filename, configuration=pdfkit_config, options=options)
-
-                    # Re-render HTML file for SharePoint online
-                    if not args.nocloud:
-                        # Render the HTML with full URL paths
-                        html_content_full = template.render(
-                            css_url=urljoin(settings['sharepoint_assets'], 'stylesheet.css'),
-                            logo_url=urljoin(settings['sharepoint_assets'], 'logo.png'),
-                            files_html=files_html_full,
-                            **extracted_data
-                        )
-                    
-                        # Write the HTML with full URL paths to a file
-                        with open(html_filename, "w") as html_file:
-                            html_file.write(html_content_full)
-            
-            # Mark the form as completed in the database
-            database.form_complete(cursor, form_id, cnx)  # Pass cnx for commit
-            
-            # Update completion status of form
-            if cur_form > 1:
-                completion_percentage = ((cur_form) / max_form) * 100
-                sys.stdout.write(f"\r    ({y} of {z}) {x[1]}: {completion_percentage:.2f}%")
-                sys.stdout.flush()
-            else:
-                sys.stdout.write(f"\r    ({y} of {z}) {x[1]}: 100%")
-                sys.stdout.flush()                
-
-            cur_form += 1
-        
-        print()
         y += 1
+
+        # Check if API limit has been reached to exit outer loop
+        if api_limit_reached.is_set():
+            break
+
     print("OK!")
     print("")
-    
+
     # Print skipped processes
     if skipped_processes:
         print(f"Skipped the following processes due to lack of permission:")
         for x in skipped_processes:
             print(f"Process ID: {x}")
             print()
-        
+
     # Print skipped downloads
     if skipped_downloads:
-       print("Skipped downloads that were corrupt")
-       for x in skipped_downloads:
-           print(f"FormID: {x}")
-           print()
-           
+        print("Skipped downloads that were corrupt")
+        for x in skipped_downloads:
+            print(f"FormID: {x}")
+            print()
+
     # Print skipped forms
     if skipped_forms:
         print("Skipped forms that were deleted:")
@@ -535,17 +636,29 @@ def main(args):
     print("Closing database connection...")
     cursor.close()
     cnx.close()
-    print ("OK!")
-    
+    print("OK!")
+
     print("")
     print("Goodbye!")
 
 if __name__ == "__main__":
     # Set up argument parsing
     parser = argparse.ArgumentParser(description="Sync data between API and database")
-    parser.add_argument('--nocloud', action='store_true', help="This will not create exports for SharePoint Online")
-    parser.add_argument('--nosync', action='store_true', help="Skip syncing groups and processes")
-    parser.add_argument('--sync', type=str, help="Sync only ONE process.  Specify the ProcessID")
+    parser.add_argument(
+        '--nocloud',
+        action='store_true',
+        help="This will not create exports for SharePoint Online"
+    )
+    parser.add_argument(
+        '--nosync',
+        action='store_true',
+        help="Skip syncing groups and processes"
+    )
+    parser.add_argument(
+        '--sync',
+        type=str,
+        help="Sync only ONE process. Specify the ProcessID"
+    )
     args = parser.parse_args()
 
     main(args)

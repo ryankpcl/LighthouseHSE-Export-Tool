@@ -16,5 +16,5 @@
     "data": "https://api.cubedms.com/rpm/api2.svc/ProcForm",
     "files": "https://api.cubedms.com/rpm/api2.svc/ProcFormFile"
   },
-  "api_max": 35000
+  "max_workers": 12
 }
