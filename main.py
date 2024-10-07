@@ -553,7 +553,7 @@ def main(args):
 
         try:
             # Process forms using ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=6) as executor:
+            with ThreadPoolExecutor(max_workers=settings['max_workers']) as executor:
                 futures = {
                     executor.submit(
                         process_single_form,
