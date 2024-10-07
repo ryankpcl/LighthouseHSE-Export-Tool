@@ -481,7 +481,7 @@ def main(args):
                     if not args.nocloud:
                         # Render the HTML with full URL paths
                         html_content_full = template.render(
-                            css_content=css_content,
+                            css_url=urljoin(settings['sharepoint_assets'], 'stylesheet.css'),
                             logo_url=urljoin(settings['sharepoint_assets'], 'logo.png'),
                             files_html=files_html_full,
                             **extracted_data
