@@ -37,6 +37,9 @@ skipped_processes = []
 
 # List to store skipped downloads
 skipped_downloads = []
+
+# List to store skipped forms
+skipped_forms = []
     
 # Function to handle groups data
 def sync_groups(cursor, url, cnx):
@@ -352,136 +355,142 @@ def main(args):
         for form_id in form_ids:
             # Get the form data from Cube
             data = api.fetch_form(form_id)
-            
-            # Get the 'Started' year and month from the form
-            year = datetime.strptime(data["Result"]["Form"]["Started"], "%Y-%m-%d %H:%M:%S").year
-            month = datetime.strptime(data["Result"]["Form"]["Started"], "%Y-%m-%d %H:%M:%S").month
-            
-            # If more than 5000 forms in this process, create individual sheets for each month in the year.
-            # Otherwise, just create sheets for each year.
-            if max_form > 5000:
-                sheet = str(year) + "-" + str(month)
-            else:
-                sheet = str(year)
-           
-            form_number = data["Result"]["Form"]["Number"].replace('/', '').replace('"', '').strip()
 
-            # Save JSON response
-            form_dir = os.path.join(output_dir, form_number)
-            os.makedirs(form_dir, exist_ok=True)
-            json_filename = os.path.normpath(os.path.join(form_dir, f"{form_number}.json"))
-            with open(json_filename, 'w') as json_file:
-                json.dump(data, json_file, indent=4)
-
-            # Save attachments
-            if "Files" in data["Result"]["Form"]:
-                for file in data["Result"]["Form"]["Files"]:
-                    file_url = api.fetch_file_url(file["FileID"])
-                    local_file_path = download_file(file_url, form_dir, file["FileName"])
-                    
-                    # Check if URL was successful, create warning notice if not.
-                    if local_file_path == 0:
-                        skipped_downloads.append(form_id)
-
-            # Add Table of Contents entry to Report file
-            if os.path.exists(os.path.join(input_dir, "toc.json")):
-                toc_df = excel.dataframe(data, form_number, os.path.join(input_dir, "toc.json"))
-                excel.append(os.path.join(output_dir, 'Process.xlsx'), toc_df, str(sheet) + " TOC")
-
-            # Add form data to Report file, create new sheets for each year.
-            if os.path.exists(os.path.join(input_dir, "report.json")):
-                report_df = excel.dataframe(data, form_number, os.path.join(input_dir, "report.json"))
-                excel.append(os.path.join(output_dir, 'Process.xlsx'), report_df, str(sheet))
-
-            # HTML report                     
-            if os.path.exists(os.path.join(input_dir, "html.json")):
-                # Load the HTML definitions file
-                with open(os.path.join(input_dir, "html.json"), 'r') as config_file:
-                    html_config = json.load(config_file)
+            # Error handling - Check if there are error message, otherwise continue.           
+            if data.get("Result", {}).get("Error", {}).get("Message"):
+                print()
+                print(f"        WARNING: {data['Result']['Error']['Message']}. FormID: {form_id}")
                 
-                # Extract HTML definitions file
-                extracted_data = extract_data(data, html_config)
-                    
-                # Load the HTML template file
-                html_template_path = os.path.join(input_dir, 'layout.html')
-                with open(html_template_path, 'r') as html_file:
-                    html_template = html_file.read()
+                skipped_forms.append(form_id)
+            else:     
+                # Get the 'Started' year and month from the form
+                year = datetime.strptime(data["Result"]["Form"]["Started"], "%Y-%m-%d %H:%M:%S").year
+                month = datetime.strptime(data["Result"]["Form"]["Started"], "%Y-%m-%d %H:%M:%S").month
                 
-                # Render the HTML with relative paths
-                css_url_relative = path_to_file_url(os.path.join(settings['assets'], 'stylesheet.css'))
-                logo_url_relative = path_to_file_url(os.path.join(settings['assets'], 'logo.png'))
+                # If more than 5000 forms in this process, create individual sheets for each month in the year.
+                # Otherwise, just create sheets for each year.
+                if max_form > 5000:
+                    sheet = str(year) + "-" + str(month)
+                else:
+                    sheet = str(year)
+               
+                form_number = data["Result"]["Form"]["Number"].replace('/', '').replace('"', '').strip()
 
-                # Embed CSS content
-                with open(os.path.join(settings['assets'], 'stylesheet.css'), 'r') as css_file:
-                    css_content = css_file.read()
+                # Save JSON response
+                form_dir = os.path.join(output_dir, form_number)
+                os.makedirs(form_dir, exist_ok=True)
+                json_filename = os.path.normpath(os.path.join(form_dir, f"{form_number}.json"))
+                with open(json_filename, 'w') as json_file:
+                    json.dump(data, json_file, indent=4)
 
-                # Get the absolute path to the logo image
-                logo_path = os.path.abspath(os.path.join(settings['assets'], 'logo.png'))
-                logo_url = path_to_file_url(logo_path)
-
-                # Set up Jinja2 template
-                template = env.from_string(html_template)
-
-                # Configure file links
-                files_html_relative = ""
-                files_html_full = ""
+                # Save attachments
                 if "Files" in data["Result"]["Form"]:
                     for file in data["Result"]["Form"]["Files"]:
-                        # Construct the local file path
-                        local_file_path = os.path.join(form_dir, file["FileName"])
-                        file_url = path_to_file_url(local_file_path)
- 
-                        if file["FileName"].lower().endswith('.pdf'):
-                            files_html_relative += f'<p><a href="{file_url}" target="_blank">{file["FileName"]}</a></p>'
-                        else:
-                            files_html_relative += f'<p><img src="{file_url}" alt="{file["FileName"]}" style="max-width: 200px;"></p>'
+                        file_url = api.fetch_file_url(file["FileID"])
+                        local_file_path = download_file(file_url, form_dir, file["FileName"])
                         
-                        # Construct the SharePoint path (if --nocloud IS NOT called)
-                        if not args.nocloud:                            
-                            full_url_path = urljoin(settings['sharepoint'], f'{process_name}/{x[1]}/{form_number}/{file["FileName"]}')
-                            
+                        # Check if URL was successful, create warning notice if not.
+                        if local_file_path == 0:
+                            skipped_downloads.append(form_id)
+
+                # Add Table of Contents entry to Report file
+                if os.path.exists(os.path.join(input_dir, "toc.json")):
+                    toc_df = excel.dataframe(data, form_number, os.path.join(input_dir, "toc.json"))
+                    excel.append(os.path.join(output_dir, 'Process.xlsx'), toc_df, str(sheet) + " TOC")
+
+                # Add form data to Report file, create new sheets for each year.
+                if os.path.exists(os.path.join(input_dir, "report.json")):
+                    report_df = excel.dataframe(data, form_number, os.path.join(input_dir, "report.json"))
+                    excel.append(os.path.join(output_dir, 'Process.xlsx'), report_df, str(sheet))
+
+                # HTML report                     
+                if os.path.exists(os.path.join(input_dir, "html.json")):
+                    # Load the HTML definitions file
+                    with open(os.path.join(input_dir, "html.json"), 'r') as config_file:
+                        html_config = json.load(config_file)
+                    
+                    # Extract HTML definitions file
+                    extracted_data = extract_data(data, html_config)
+                        
+                    # Load the HTML template file
+                    html_template_path = os.path.join(input_dir, 'layout.html')
+                    with open(html_template_path, 'r') as html_file:
+                        html_template = html_file.read()
+                    
+                    # Render the HTML with relative paths
+                    css_url_relative = path_to_file_url(os.path.join(settings['assets'], 'stylesheet.css'))
+                    logo_url_relative = path_to_file_url(os.path.join(settings['assets'], 'logo.png'))
+
+                    # Embed CSS content
+                    with open(os.path.join(settings['assets'], 'stylesheet.css'), 'r') as css_file:
+                        css_content = css_file.read()
+
+                    # Get the absolute path to the logo image
+                    logo_path = os.path.abspath(os.path.join(settings['assets'], 'logo.png'))
+                    logo_url = path_to_file_url(logo_path)
+
+                    # Set up Jinja2 template
+                    template = env.from_string(html_template)
+
+                    # Configure file links
+                    files_html_relative = ""
+                    files_html_full = ""
+                    if "Files" in data["Result"]["Form"]:
+                        for file in data["Result"]["Form"]["Files"]:
+                            # Construct the local file path
+                            local_file_path = os.path.join(form_dir, file["FileName"])
+                            file_url = path_to_file_url(local_file_path)
+     
                             if file["FileName"].lower().endswith('.pdf'):
-                                files_html_full += f'<p><a href="{full_url_path}" target="_blank">{file["FileName"]}</a></p>'
+                                files_html_relative += f'<p><a href="{file_url}" target="_blank">{file["FileName"]}</a></p>'
                             else:
-                                files_html_full += f'<p><img src="{full_url_path}" alt="{file["FileName"]}" style="max-width: 200px;"></p>'
+                                files_html_relative += f'<p><img src="{file_url}" alt="{file["FileName"]}" style="max-width: 200px;"></p>'
+                            
+                            # Construct the SharePoint path (if --nocloud IS NOT called)
+                            if not args.nocloud:                            
+                                full_url_path = urljoin(settings['sharepoint'], f'{process_name}/{x[1]}/{form_number}/{file["FileName"]}')
+                                
+                                if file["FileName"].lower().endswith('.pdf'):
+                                    files_html_full += f'<p><a href="{full_url_path}" target="_blank">{file["FileName"]}</a></p>'
+                                else:
+                                    files_html_full += f'<p><img src="{full_url_path}" alt="{file["FileName"]}" style="max-width: 200px;"></p>'
 
-                # Render the HTML with relative paths
-                html_content_relative = template.render(
-                    css_content=css_content,
-                    logo_url=logo_url,
-                    files_html=files_html_relative,
-                    **extracted_data  # Unpack the extracted_data dictionary
-                )
-
-                # Define file paths
-                html_filename = os.path.join(form_dir, f"report_{form_number}.html")
-                pdf_filename = os.path.join(form_dir, f"report_{form_number}.pdf")   
-
-                # Write the HTML to a file
-                with open(html_filename, "w") as html_file:
-                    html_file.write(html_content_relative)
-                
-                # Convert HTML to PDF
-                options = {
-                    'enable-local-file-access': True
-                }
-                pdfkit.from_file(html_filename, pdf_filename, configuration=pdfkit_config, options=options)
-
-                # Re-render HTML file for SharePoint online
-                if not args.nocloud:
-                    # Render the HTML with full URL paths
-                    html_content_full = template.render(
+                    # Render the HTML with relative paths
+                    html_content_relative = template.render(
                         css_content=css_content,
-                        logo_url=urljoin(settings['sharepoint_assets'], 'logo.png'),
-                        files_html=files_html_full,
-                        **extracted_data
+                        logo_url=logo_url,
+                        files_html=files_html_relative,
+                        **extracted_data  # Unpack the extracted_data dictionary
                     )
-                
-                    # Write the HTML with full URL paths to a file
-                    with open(html_filename, "w") as html_file:
-                        html_file.write(html_content_full)
 
-                
+                    # Define file paths
+                    html_filename = os.path.join(form_dir, f"report_{form_number}.html")
+                    pdf_filename = os.path.join(form_dir, f"report_{form_number}.pdf")   
+
+                    # Write the HTML to a file
+                    with open(html_filename, "w") as html_file:
+                        html_file.write(html_content_relative)
+                    
+                    # Convert HTML to PDF
+                    options = {
+                        'enable-local-file-access': True
+                    }
+                    pdfkit.from_file(html_filename, pdf_filename, configuration=pdfkit_config, options=options)
+
+                    # Re-render HTML file for SharePoint online
+                    if not args.nocloud:
+                        # Render the HTML with full URL paths
+                        html_content_full = template.render(
+                            css_content=css_content,
+                            logo_url=urljoin(settings['sharepoint_assets'], 'logo.png'),
+                            files_html=files_html_full,
+                            **extracted_data
+                        )
+                    
+                        # Write the HTML with full URL paths to a file
+                        with open(html_filename, "w") as html_file:
+                            html_file.write(html_content_full)
+            
             # Mark the form as completed in the database
             database.form_complete(cursor, form_id, cnx)  # Pass cnx for commit
             
@@ -506,11 +515,21 @@ def main(args):
         print(f"Skipped the following processes due to lack of permission:")
         for x in skipped_processes:
             print(f"Process ID: {x}")
+            print()
         
     # Print skipped downloads
     if skipped_downloads:
+       print("Skipped downloads that were corrupt")
        for x in skipped_downloads:
            print(f"FormID: {x}")
+           print()
+           
+    # Print skipped forms
+    if skipped_forms:
+        print("Skipped forms that were deleted:")
+        for x in skipped_forms:
+            print(f"FormID: {x}")
+            print()
 
     # Close database connection
     print("Closing database connection...")
